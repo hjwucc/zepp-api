@@ -1,65 +1,49 @@
-import {
-  initRedisClient,
-  validateToken,
-  validateDataFormat,
-  setCorsHeaders,
-  handleOptionsRequest,
-  validateHttpMethod,
-  handleTokenValidationFailure
-} from '../lib/utils.js';
+import { initRedisClient, validateToken, formatUpdateTime, validateDataFormat } from '../lib/utils.js';
 
-/**
- * 主处理函数
- */
-export default async function handler(req, res) {
-  // 设置CORS响应头
-  setCorsHeaders(res, 'POST, OPTIONS');
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Content-Type': 'application/json'
+};
 
-  // 处理预检请求
-  if (handleOptionsRequest(req, res)) {
-    return;
-  }
-
-  // 验证请求方法
-  if (!validateHttpMethod(req, res, 'POST')) {
-    return;
-  }
-
-  // Token验证
-  if (!validateToken(req)) {
-    return handleTokenValidationFailure(res);
-  }
-
+export async function POST(request) {
   try {
-    // 验证数据格式
-    if (!validateDataFormat(req.body)) {
-      return res.status(400).json({
-        error: '数据格式无效',
-        message: '请检查type和value的格式'
-      });
+    if (!validateToken({ headers: { authorization: request.headers.get('authorization') } })) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
     }
 
-    const { type, value } = req.body;
+    const data = await request.json();
+    if (!validateDataFormat(data)) {
+      return new Response(JSON.stringify({ error: 'Invalid data format' }), { status: 400, headers: corsHeaders });
+    }
+
+    const redis = await initRedisClient();
+    const promises = [];
+    const cacheTime = process.env.CACHE_TIME ? parseInt(process.env.CACHE_TIME) : null;
     
-    // 连接Redis并存储数据
-    const redisClient = await initRedisClient();
-    try {
-      await redisClient.set(type, JSON.stringify(value), { EX: 30 });
-    } finally {
-      await redisClient.disconnect();
+    if (data.heart_rate !== undefined) {
+      const setOptions = cacheTime ? { EX: cacheTime } : {};
+      promises.push(redis.set('heart_rate', JSON.stringify(data.heart_rate), setOptions));
     }
+    if (data.location !== undefined) {
+      const setOptions = cacheTime ? { EX: cacheTime } : {};
+      promises.push(redis.set('location', JSON.stringify(data.location), setOptions));
+    }
+    
+    await Promise.all(promises);
+    await redis.disconnect();
 
-    return res.status(200).json({
-      status: 'ok',
-      message: `已缓存${type}数据`,
-      timestamp: new Date().toISOString()
-    });
+    return new Response(JSON.stringify({
+      success: true,
+      updated: formatUpdateTime()
+    }), { status: 200, headers: corsHeaders });
 
-  } catch (err) {
-    console.error(`数据处理失败: ${err.message}`);
-    return res.status(500).json({
-      error: '服务器错误',
-      message: '数据处理失败，请稍后重试'
-    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500, headers: corsHeaders });
   }
+}
+
+export async function OPTIONS() {
+  return new Response(null, { status: 200, headers: corsHeaders });
 }

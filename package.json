@@ -1,43 +1,15 @@
 {
   "name": "zepp-api",
   "version": "1.0.0",
-  "description": "Zepp设备心率与地理位置实时数据接收API服务",
-  "main": "index.js",
-  "type": "module",
+  "description": "Zepp device heart rate and location data API",
   "scripts": {
     "dev": "vercel dev",
-    "build": "vercel build",
-    "deploy": "vercel --prod",
-    "test": "node test/standalone-test.js",
-    "start": "echo \"这是一个Serverless应用，请使用 npm run dev 进行本地开发\""
+    "deploy": "vercel --prod"
   },
-  "keywords": [
-    "zepp",
-    "api",
-    "heart-rate",
-    "location",
-    "redis",
-    "vercel",
-    "serverless",
-    "real-time"
-  ],
-  "author": "Zepp API Developer",
-  "license": "ISC",
   "dependencies": {
     "redis": "^5.8.0"
   },
-  "devDependencies": {
-    "@vercel/node": "^3.0.0"
-  },
   "engines": {
-    "node": ">=18.0.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/your-username/zepp-api.git"
-  },
-  "bugs": {
-    "url": "https://github.com/your-username/zepp-api/issues"
-  },
-  "homepage": "https://github.com/your-username/zepp-api#readme"
+    "node": "20.x"
+  }
 }

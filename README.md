@@ -1,42 +1,33 @@
 # Zepp API
 
-基于 Vercel 的 Serverless API 服务，用于接收和查询 Zepp 设备的心率和地理位置数据。数据通过 Redis 缓存 30 秒。
+Serverless API for Zepp device heart rate and location data.
 
-## API 接口
+## Usage
 
-### POST /api/push
-推送心率或地理位置数据
+### Push Data
 ```bash
-curl -X POST https://your-project.vercel.app/api/push \
+curl -X POST https://zepp-api.whj.life/api/push \
   -H "Content-Type: application/json" \
-  -H "X-API-Token: your-token" \
-  -d '{"type":"heart_rate","value":75}'
+  -H "Authorization: Bearer your-token" \
+  -d '{"heart_rate":75,"location":{"lat":39.9042,"lng":116.4074}}'
 ```
 
-### GET /api/get
-获取最新数据
+### Get Data
 ```bash
-curl -X GET https://your-project.vercel.app/api/get \
-  -H "X-API-Token: your-token"
+curl -X GET https://zepp-api.whj.life/api/get \
+  -H "Authorization: Bearer your-token"
 ```
 
-## 部署
+## Deploy
 
-1. 获取 Redis 服务（推荐 [Redis Labs](https://redis.com/)）
-2. 上传代码到 GitHub
-3. 在 [Vercel](https://vercel.com/) 导入项目
-4. 配置环境变量：
-   - `REDIS_URL`: Redis 连接字符串
-   - `API_TOKEN`: API 访问令牌（可选）
+1. Set environment variables:
+   - `REDIS_URL`: Redis connection string
+   - `API_TOKEN`: API access token
+   - `CACHE_TIME`: Cache expiration time in seconds (optional, default: permanent)
+2. Deploy to Vercel
 
-## 本地测试
+## Tech Stack
 
-```bash
-npm run test
-```
-
-## 技术栈
-
-- Node.js + Vercel Serverless
-- Redis 缓存（30秒过期）
-- Token 认证
+- Node.js + Vercel
+- Redis (30s TTL)
+- Bearer token auth

@@ -1,62 +1,36 @@
-import {
-  initRedisClient,
-  validateToken,
-  formatUpdateTime,
-  setCorsHeaders,
-  handleOptionsRequest,
-  validateHttpMethod,
-  handleTokenValidationFailure
-} from '../lib/utils.js';
+import { initRedisClient, validateToken, formatUpdateTime } from '../lib/utils.js';
 
-/**
- * 主处理函数
- */
-export default async function handler(req, res) {
-  // 设置CORS响应头
-  setCorsHeaders(res, 'GET, OPTIONS');
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Content-Type': 'application/json'
+};
 
-  // 处理预检请求
-  if (handleOptionsRequest(req, res)) {
-    return;
-  }
-
-  // 验证请求方法
-  if (!validateHttpMethod(req, res, 'GET')) {
-    return;
-  }
-
-  // Token验证
-  if (!validateToken(req)) {
-    return handleTokenValidationFailure(res);
-  }
-
+export async function GET(request) {
   try {
-    // 连接Redis并获取数据
-    const redisClient = await initRedisClient();
-    let heartRateStr, locationStr;
-    
-    try {
-      [heartRateStr, locationStr] = await Promise.all([
-        redisClient.get('heart_rate'),
-        redisClient.get('location')
-      ]);
-    } finally {
-      await redisClient.disconnect();
+    if (!validateToken({ headers: { authorization: request.headers.get('authorization') } })) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
     }
 
-    return res.status(200).json({
-      heart_rate: heartRateStr ? JSON.parse(heartRateStr) : null,
-      location: locationStr ? JSON.parse(locationStr) : null,
-      updated: formatUpdateTime(),
-      status: 'success'
-    });
+    const redis = await initRedisClient();
+    const [heartRate, location] = await Promise.all([
+      redis.get('heart_rate'),
+      redis.get('location')
+    ]);
+    await redis.disconnect();
 
-  } catch (err) {
-    console.error(`数据查询失败: ${err.message}`);
-    return res.status(500).json({
-      error: '服务器错误',
-      message: '获取数据失败，请稍后重试',
+    return new Response(JSON.stringify({
+      heart_rate: heartRate ? JSON.parse(heartRate) : null,
+      location: location ? JSON.parse(location) : null,
       updated: formatUpdateTime()
-    });
+    }), { status: 200, headers: corsHeaders });
+
+  } catch (error) {
+    return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500, headers: corsHeaders });
   }
+}
+
+export async function OPTIONS() {
+  return new Response(null, { status: 200, headers: corsHeaders });
 }
